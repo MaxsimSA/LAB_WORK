@@ -179,7 +179,7 @@ async def fetch_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Основная функция
 def main():
-    application = Application.builder().token("7755388319:AAFrUYyZDS3R-TYDyiCk441zyyPlMnDMTrM").build()
+    application = Application.builder().token("*").build()
 
     settings_handler = ConversationHandler(
         entry_points=[CommandHandler("settings", settings)],

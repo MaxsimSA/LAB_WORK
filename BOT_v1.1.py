@@ -196,8 +196,10 @@ class WeatherHandler:
 
 # Основная функция
 def main():
+
     load_dotenv()
     application = Application.builder().token(os.getenv("TOKEN")).build()
+
 
     # Создаём объект SettingsHandler
     settings_handler = SettingsHandler()
