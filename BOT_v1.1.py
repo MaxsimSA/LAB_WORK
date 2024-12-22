@@ -197,7 +197,7 @@ class WeatherHandler:
 
 # Основная функция
 def main():
-    application = Application.builder().token("7755388319:AAFrUYyZDS3R-TYDyiCk441zyyPlMnDMTrM").build()
+    application = Application.builder().token("*").build()
 
     # Создаём объект SettingsHandler
     settings_handler = SettingsHandler()
