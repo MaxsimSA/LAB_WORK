@@ -4,6 +4,13 @@ from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, ConversationHandler, filters
 import os
 from dotenv import load_dotenv
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Файл для хранения данных пользователей
 DATA_FILE = "user_data.json"
@@ -109,10 +116,23 @@ class SettingsHandler:
         return ConversationHandler.END
 
 class WeatherHandler:
+    def __init__(self):
+        self.chrome_options = Options()
+        self.chrome_options.add_argument("--headless")
+        self.chrome_options.add_argument("--no-sandbox")
+        self.chrome_options.add_argument("--disable-dev-shm-usage")
+        self.chrome_options.add_argument("--disable-gpu")
+        self.chrome_options.add_argument("--disable-software-rasterizer")   
+        self.chrome_options.add_argument("--ignore-certificate-errors")
+        self.chrome_options.add_argument("--allow-insecure-localhost")
+        self.chrome_options.add_argument("--disable-extensions")
+
+        self.service = Service('C://chromedriver/chromedriver.exe')
+
     async def weather(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Начало процесса выбора города для отображения погоды."""
         user_id = str(update.effective_user.id)
-        data = SettingsHandler().load_data()  # Используем метод загрузки данных из SettingsHandler
+        data = SettingsHandler().load_data()
 
         if user_id not in data:
             await update.message.reply_text("Сначала используйте команду /start.")
@@ -127,74 +147,51 @@ class WeatherHandler:
     async def fetch_weather(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Получение погоды для выбранного города."""
         city = update.message.text
+        driver = webdriver.Chrome(service=self.service, options=self.chrome_options)
+
         try:
-            # Получение координат города
-            headers = {
-                "User-Agent": "WeatherBot/1.0 (your_email@example.com)"
-            }
-            geocode_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
-            response = requests.get(geocode_url, headers=headers, timeout=10)
-            response.raise_for_status()
-            geocode_data = response.json()
+            url = 'https://yandex.ru/pogoda/search'
+            driver.get(url)
 
-            if not geocode_data:
-                await update.message.reply_text("Город не найден. Попробуйте другой.")
-                return ConversationHandler.END
+            search_input = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.NAME, 'request'))
+            )
+            search_input.send_keys(city)
+            search_input.send_keys(Keys.RETURN)
 
-            lat, lon = geocode_data[0]["lat"], geocode_data[0]["lon"]
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, 'place-list__item-name'))
+            )
 
-            # Получение данных о погоде
-            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto"
-            weather_response = requests.get(weather_url, timeout=10)
-            weather_response.raise_for_status()
-            weather_data = weather_response.json()
-
-            # Проверка данных
-            if "daily" not in weather_data or not weather_data["daily"].get("temperature_2m_min") or not weather_data["daily"].get("temperature_2m_max"):
-                await update.message.reply_text("Не удалось получить данные о погоде для данного города.")
-                return ConversationHandler.END
-
-            daily = weather_data["daily"]
-
-            # Словарь для расшифровки погодного кода
-            weather_code_map = {
-                0: "Ясно ☀️",
-                1: "Преимущественно ясно 🌤️",
-                2: "Переменная облачность ⛅",
-                3: "Пасмурно ☁️",
-                45: "Туман 🌫️",
-                48: "Туман с изморозью 🌫️❄️",
-                51: "Слабая морось 🌦️",
-                61: "Слабой интенсивности дождь 🌧️",
-                71: "Слабой интенсивности снегопад 🌨️",
-                80: "Грозы 🌩️",
-            }
-
-            # Формирование сообщения с погодой
-            weather_message = f"Погода в {city} на 3 дня:\n"
-            for i in range(3):
-                temp_min = daily['temperature_2m_min'][i]
-                temp_max = daily['temperature_2m_max'][i]
-                precipitation = daily.get('precipitation_sum', [0])[i]  # Осадки
-                weather_code = daily.get('weathercode', [0])[i]  # Код погоды
-                weather_description = weather_code_map.get(weather_code, "Неизвестные условия 🌈")
-
-                weather_message += (
-                    f"День {i+1}:\n"
-                    f"Температура: {temp_min}°C - {temp_max}°C\n"
-                    f"Осадки: {precipitation} мм\n"
-                    f"Условия: {weather_description}\n\n"
+            if "pogoda" in driver.current_url and "lat" in driver.current_url:
+                pass
+            else:
+                options = WebDriverWait(driver, 10).until(
+                    EC.presence_of_all_elements_located((By.CLASS_NAME, 'place-list__item-name'))
                 )
+                if options:
+                    options[0].click()
 
-            await update.message.reply_text(weather_message)
-        except requests.exceptions.HTTPError as http_err:
-            await update.message.reply_text(f"HTTP ошибка: {http_err}")
-        except requests.exceptions.RequestException as req_err:
-            await update.message.reply_text("Ошибка сети. Попробуйте ещё раз позже.")
-        except IndexError as index_err:
-            await update.message.reply_text("Ошибка данных. Проверьте название города.")
+            temp = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, 'fact__temp'))
+            ).text
+            feels_like = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, '.fact__feels-like .temp__value'))
+            ).text
+            condition = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, 'link__condition'))
+            ).text
+            name_city = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.title.title_level_1.header-title__title'))
+            ).text
+            await update.message.reply_text(
+                f"Текущая температура в {name_city}: {temp}°C\nОщущается как: {feels_like}°C\nУсловия: {condition}"
+            )
         except Exception as e:
-            await update.message.reply_text("Произошла ошибка при получении данных о погоде.")
+            await update.message.reply_text("Произошла ошибка при получении данных о погоде или город не найден.")
+            print(f"Ошибка: {e}")
+        finally:
+            driver.quit()
         return ConversationHandler.END
 
 # Основная функция
