@@ -47,16 +47,16 @@ try:
     try:
         temp = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, 'fact__temp'))
-        ).text
+            ).text
         feels_like = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, '.fact__feels-like .temp__value'))
-        ).text
+            ).text
         condition = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, 'link__condition'))
-        ).text
+            ).text
         name_city = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, 'title title_level_1 header-title__title'))
-        ).text
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.title.title_level_1.header-title__title'))
+            ).text
 
         print(f"В {name_city} Текущая температура: {temp}°C, Ощущается как: {feels_like}°C, Условия: {condition}")
     except Exception as e:
