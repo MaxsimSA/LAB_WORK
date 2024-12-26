@@ -15,18 +15,6 @@ from selenium.webdriver.support import expected_conditions as EC
 # Файл для хранения данных пользователей
 DATA_FILE = "user_data.json"
 
-# Функции для работы с JSON
-def load_data():
-    try:
-        with open(DATA_FILE, "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {}
-
-def save_data(data):
-    with open(DATA_FILE, "w") as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
-
 class SettingsHandler:
     def __init__(self):
         self.data_file = "user_data.json"
