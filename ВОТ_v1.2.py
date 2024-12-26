@@ -18,26 +18,6 @@ from selenium.webdriver.support import expected_conditions as EC
 # Файл для хранения данных пользователей
 DATA_FILE = "user_data.json"
 
-# Функции для работы с JSON
-def load_data():
-    """
-    Загружает данные из JSON файла. 
-    Возвращает пустой словарь, если файл не найден
-    """
-    try:
-        with open(DATA_FILE, "r", encoding="windows-1251") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {}
-
-def save_data(data):
-    """
-    Сохраняет переданные данные в JSON файл, 
-    обеспечивая правильное форматирование с отступами
-    """
-    with open(DATA_FILE, "w", encoding="windows-1251") as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
-
 class SettingsHandler:
     """
     Класс для обработки настроек пользователей,
